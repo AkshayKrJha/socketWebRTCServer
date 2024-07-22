@@ -22,15 +22,21 @@ app.get("/", (req, res) => {
 
 io.on("connection", (socket) => {
   console.log("User Connected");
+  let appendedMessage = [];
   socket.broadcast.emit("test", `${socket.id} just connected`);
   socket.on("disconnect", () => {
     console.log("User disconnected");
     socket.broadcast.emit("test", `${socket.id} just dis-connected`);
   });
   socket.on("some-event", (value) => {
-    console.log("Received some event:", value);
-    socket.timeout(5000).emit("test", `${value} received by server`);
-    // io.timeout(5000).emit("test",`${value} received by server`)
+    appendedMessage.push(value);
+    console.log("Received some event:", appendedMessage);
+    socket.timeout(5000).emit(
+      "test",
+      `${appendedMessage.reduce((accumulator, value) => {
+        return `${accumulator} ${value}`;
+      }, "")}`
+    );
   });
 });
 
