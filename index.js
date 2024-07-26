@@ -15,19 +15,29 @@ const io = new Server(server, {
 });
 
 const __dirName = dirname(fileURLToPath(import.meta.url));
+let nickNames = ["Automata", "Compiler", "DBMS", "CO", "Cryptography"];
 
 app.get("/", (req, res) => {
   res.sendFile(join(__dirName, "index.html"));
 });
 
 io.on("connection", (socket) => {
-  console.log("User Connected");
+  let name = nickNames.shift();
+  console.log(name, "Connected");
   let appendedMessage = [];
-  socket.broadcast.emit("test", `${socket.id} just connected`);
+  socket.broadcast.emit("test", `${name} just connected`);
   socket.on("disconnect", () => {
-    console.log("User disconnected");
-    socket.broadcast.emit("test", `${socket.id} just dis-connected`);
+    console.log(name, "disconnected");
+    nickNames.push(name);
+    socket.broadcast.emit("test", `${name} just dis-connected`);
+    socket.broadcast.emit("taaip off", name);
   });
+  socket.on("typing on", () => {
+    socket.broadcast.emit("taaip on", name);
+  });
+  socket.on("typing off", () => {
+    socket.broadcast.emit("taaip off", name)
+  })
   socket.on("some-event", (value) => {
     appendedMessage.push(value);
     console.log("Received some event:", appendedMessage);
