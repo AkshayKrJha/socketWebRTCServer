@@ -49,6 +49,7 @@ io.on("connection", (socket) => {
       userID: socket.id,
       userName: socket.username,
     });
+    console.log(socket.username, "disconnected");
   });
   socket.on("typing on", () => {
     socket.broadcast.emit("taaip on", socket.username);
@@ -65,6 +66,12 @@ io.on("connection", (socket) => {
         return `${accumulator} ${value}`;
       }, "")}`
     );
+  });
+  socket.on("private metzage", ({ content, to }) => {
+    socket
+      .to(to)
+      .emit("private metzage", { content, from: socket.id, received: true });
+    socket.emit("private metzage", { content, from: to, received: false });
   });
 });
 io.use((socket, next) => {
