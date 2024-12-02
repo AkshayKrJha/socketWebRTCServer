@@ -14,6 +14,8 @@ const io = new Server(server, {
   },
 });
 
+const metzages = new Map();
+
 const __dirName = dirname(fileURLToPath(import.meta.url));
 // let nickNames = ["Automata", "Compiler", "DBMS", "CO", "Cryptography"];
 
@@ -40,6 +42,7 @@ io.on("connection", (socket) => {
     userID: socket.id,
     userName: socket.username,
   });
+
   socket.on("disconnect", () => {
     // console.log(name, "disconnected");
     // nickNames.push(name);
@@ -51,12 +54,15 @@ io.on("connection", (socket) => {
     });
     console.log(socket.username, "disconnected");
   });
+
   socket.on("typing on", () => {
     socket.broadcast.emit("taaip on", socket.username);
   });
+
   socket.on("typing off", () => {
     socket.broadcast.emit("taaip off", socket.username);
   });
+
   socket.on("some-event", (value) => {
     appendedMessage.push(value);
     console.log("Received some event:", appendedMessage);
@@ -67,11 +73,45 @@ io.on("connection", (socket) => {
       }, "")}`
     );
   });
+
+  socket.on("room metzage", ({ content, to }) => {
+    // store the sent message
+    const timeStamp = +new Date();
+    const oldMetzages = metzages.get(to);
+    const metzage = {
+      message:content,
+      for: socket.id,
+      senderName: socket.username,
+      timeStamp,
+    };
+    console.log("========received message for the room=========\n", metzage);
+    metzages.set(to, [...oldMetzages, metzage]);
+    // io sends to all in the room, socket sends to all except sender
+    io.to(to).emit("room metzage", metzage);
+  });
+
   socket.on("private metzage", ({ content, to }) => {
     socket
       .to(to)
-      .emit("private metzage", { content, from: socket.id, received: true });
-    socket.emit("private metzage", { content, from: to, received: false });
+      .emit("private metzage", { content, from: to, received: true });
+  });
+
+  socket.on("join room", (roomName, callback) => {
+    socket.join(roomName);
+    // send old metzages to new user in the room
+    const roomMetzages = metzages.get(roomName);
+    if (!roomMetzages) metzages.set(roomName, []);
+    console.log(
+      "=========Metzages for the new user============\n",
+      metzages.get(roomName)
+    );
+    callback(metzages.get(roomName));
+  });
+
+  socket.on("leave room", (roomName, callback) => {
+    socket.leave(roomName);
+    // if room gets empty delete chats of the room
+    callback();
   });
 });
 io.use((socket, next) => {
@@ -79,6 +119,19 @@ io.use((socket, next) => {
   console.log("Socket User Name", username);
   if (!username) {
     return next(new Error("invalid username"));
+  }
+  // modify for already existing user
+  const socketMap = io.of("/").sockets;
+  // check whether any key of socketMap contain same username
+  let isUsernameAlreadyExists = false;
+  for (let [id, socket] of socketMap) {
+    if (socket.username === username) {
+      isUsernameAlreadyExists = true;
+      break;
+    }
+  }
+  if (isUsernameAlreadyExists) {
+    return next(new Error("User already exists"));
   }
   socket.username = username;
   next();
