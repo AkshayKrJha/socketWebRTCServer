@@ -93,8 +93,8 @@ io.on("connection", (socket) => {
   socket.on("private metzage", ({ content, to }) => {
     socket
       .to(to)
-      .emit("private metzage", { content, from: to, received: true });
-      socket.emit("private metzage", { content, from: socket.id, received: false });
+      .emit("private metzage", { content, from: socket.id, received: true });
+      socket.emit("private metzage", { content, from: to, received: false });
   });
 
   socket.on("join room", (roomName, callback) => {
